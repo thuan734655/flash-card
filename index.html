@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flash Card Tiếng Nhật</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-blue-50 min-h-screen font-sans p-4">
+    <div class="container mx-auto py-4">
+        <h1 class="text-3xl font-bold text-center text-blue-800 mb-8">Flash Card Tiếng Nhật</h1>
+        
+        <div class="flex flex-col md:flex-row gap-8">
+            <!-- Controls Section -->
+            <div class="md:w-1/4">
+                <div class="bg-white p-6 rounded-lg shadow-md mb-4">
+                    <h2 class="text-xl font-bold text-gray-800 mb-4">Bảng Điều Khiển</h2>
+                    <button id="start-btn" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded mb-3">
+                        Bắt Đầu
+                    </button>
+                    <button id="shuffle-btn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mb-3">
+                        Trộn Thẻ
+                    </button>
+                    <button id="reset-btn" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded mb-3">
+                        Làm Mới
+                    </button>
+                </div>
+                
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h2 class="text-xl font-bold text-gray-800 mb-4">Thống Kê</h2>
+                    <div class="flex justify-between mb-2">
+                        <span>Tổng số thẻ:</span>
+                        <span id="total-cards">0</span>
+                    </div>
+                    <div class="flex justify-between mb-2">
+                        <span>Đã xem:</span>
+                        <span id="cards-studied">0</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Simple Flashcard -->
+            <div class="md:w-3/4">
+                <!-- Card Container -->
+                <div class="mb-6">
+                    <!-- Card Front (shown by default) -->
+                    <div id="card-front" class="bg-white rounded-lg shadow-lg p-8 flex flex-col items-center justify-center min-h-[400px]">
+                        <h2 id="vocabulary" class="text-4xl font-bold mb-4 text-blue-800"></h2>
+                        <h3 id="kanji" class="text-3xl mb-6 text-gray-700"></h3>
+                        <p class="text-gray-500 italic mt-4">Nhấp vào thẻ để xem nghĩa</p>
+                    </div>
+                    
+                    <!-- Card Back (hidden initially) -->
+                    <div id="card-back" class="hidden bg-blue-100 rounded-lg shadow-lg p-8 flex flex-col items-center justify-center min-h-[400px]">
+                        <h3 class="text-xl text-gray-700 mb-4">Nghĩa:</h3>
+                        <p id="meaning" class="text-3xl font-bold text-blue-800 mb-6"></p>
+                        <p class="text-gray-500 italic mt-6">Nhấp vào thẻ để xem từ vựng</p>
+                    </div>
+                </div>
+                
+                <!-- Navigation Buttons -->
+                <div class="flex justify-center space-x-4">
+                    <button id="prev-btn" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-6 rounded disabled:opacity-50">
+                        Trước
+                    </button>
+                    <button id="next-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded disabled:opacity-50">
+                        Tiếp Theo
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="data.js"></script>
+    <script>
+        // Initialize when DOM is loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            // DOM Elements
+            const cardFront = document.getElementById('card-front');
+            const cardBack = document.getElementById('card-back');
+            const vocabularyElement = document.getElementById('vocabulary');
+            const kanjiElement = document.getElementById('kanji');
+            const meaningElement = document.getElementById('meaning');
+            const nextBtn = document.getElementById('next-btn');
+            const prevBtn = document.getElementById('prev-btn');
+            const startBtn = document.getElementById('start-btn');
+            const shuffleBtn = document.getElementById('shuffle-btn');
+            const resetBtn = document.getElementById('reset-btn');
+            const totalCardsElement = document.getElementById('total-cards');
+            const cardsStudiedElement = document.getElementById('cards-studied');
+            
+            // Application State
+            let currentIndex = 0;
+            let cardsViewed = 0;
+            let cards = [...flashcardData]; // Copy the data
+            let hasStarted = false;
+            let isFlipped = false;
+            
+            // Initialize
+            totalCardsElement.textContent = cards.length;
+            cardsStudiedElement.textContent = '0';
+            nextBtn.disabled = true;
+            prevBtn.disabled = true;
+            
+            // Flip the card
+            function flipCard() {
+                if (!hasStarted) return;
+                
+                isFlipped = !isFlipped;
+                
+                if (isFlipped) {
+                    cardFront.classList.add('hidden');
+                    cardBack.classList.remove('hidden');
+                    
+                    // Count once when a card is flipped to show meaning
+                    if (!cards[currentIndex].viewed) {
+                        cards[currentIndex].viewed = true;
+                        cardsViewed++;
+                        cardsStudiedElement.textContent = cardsViewed;
+                    }
+                } else {
+                    cardFront.classList.remove('hidden');
+                    cardBack.classList.add('hidden');
+                }
+            }
+            
+            // Display card
+            function displayCard() {
+                if (!hasStarted || cards.length === 0) return;
+                
+                const currentCard = cards[currentIndex];
+                if (currentCard) {
+                    vocabularyElement.textContent = currentCard.vocabulary || '';
+                    kanjiElement.textContent = currentCard.kanji || '';
+                    meaningElement.textContent = currentCard.meaning || '';
+                }
+                
+                // Reset to front side
+                cardFront.classList.remove('hidden');
+                cardBack.classList.add('hidden');
+                isFlipped = false;
+                
+                // Update navigation
+                prevBtn.disabled = currentIndex === 0;
+                nextBtn.disabled = currentIndex >= cards.length - 1;
+            }
+            
+            // Start study
+            function startStudy() {
+                hasStarted = true;
+                startBtn.textContent = 'Tiếp Tục';
+                currentIndex = 0;
+                displayCard();
+                nextBtn.disabled = false;
+            }
+            
+            // Shuffle cards
+            function shuffleCards() {
+                if (cards.length === 0) return;
+                
+                for (let i = cards.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [cards[i], cards[j]] = [cards[j], cards[i]];
+                }
+                
+                currentIndex = 0;
+                isFlipped = false;
+                cardFront.classList.remove('hidden');
+                cardBack.classList.add('hidden');
+                if (hasStarted) displayCard();
+            }
+            
+            // Next card
+            function nextCard() {
+                if (!hasStarted || currentIndex >= cards.length - 1) return;
+                currentIndex++;
+                displayCard();
+            }
+            
+            // Previous card
+            function prevCard() {
+                if (!hasStarted || currentIndex <= 0) return;
+                currentIndex--;
+                displayCard();
+            }
+            
+            // Reset study
+            function resetStudy() {
+                if (confirm('Bạn có chắc muốn làm mới?')) {
+                    // Reset state
+                    currentIndex = 0;
+                    cardsViewed = 0;
+                    hasStarted = false;
+                    isFlipped = false;
+                    
+                    // Create new copy of cards with reset viewed state
+                    cards = flashcardData.map(card => ({
+                        ...card,
+                        viewed: false
+                    }));
+                    
+                    // Reset UI
+                    cardFront.classList.remove('hidden');
+                    cardBack.classList.add('hidden');
+                    cardsStudiedElement.textContent = '0';
+                    startBtn.textContent = 'Bắt Đầu';
+                    vocabularyElement.textContent = '';
+                    kanjiElement.textContent = '';
+                    meaningElement.textContent = '';
+                    nextBtn.disabled = true;
+                    prevBtn.disabled = true;
+                }
+            }
+            
+            // Initialize cards with viewed property
+            cards = cards.map(card => ({
+                ...card,
+                viewed: false
+            }));
+            
+            // Event Listeners
+            cardFront.addEventListener('click', flipCard);
+            cardBack.addEventListener('click', flipCard);
+            startBtn.addEventListener('click', startStudy);
+            nextBtn.addEventListener('click', nextCard);
+            prevBtn.addEventListener('click', prevCard);
+            shuffleBtn.addEventListener('click', shuffleCards);
+            resetBtn.addEventListener('click', resetStudy);
+        });
+    </script>
+</body>
+</html>
